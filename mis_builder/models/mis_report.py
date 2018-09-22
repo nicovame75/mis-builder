@@ -86,9 +86,13 @@ class MisReportKpi(models.Model):
         inverse_name='kpi_id',
         copy=True,
     )
-    auto_expand_accounts = fields.Boolean(string='Display details by account')
+    # We don't rename these variables to auto_expand_agreggs for not forcing
+    # all depending modules to rename their data
+    auto_expand_accounts = fields.Boolean(
+        string='Display details by aggregation'
+    )
     auto_expand_accounts_style_id = fields.Many2one(
-        string="Style for account detail rows",
+        string="Style for aggregation detail rows",
         comodel_name="mis.report.style",
         required=False
     )
@@ -519,17 +523,18 @@ class MisReport(models.Model):
     # TODO: kpi name cannot be start with query name
 
     @api.multi
-    def prepare_kpi_matrix(self):
+    def prepare_kpi_matrix(self, account_group_level=0):
         self.ensure_one()
-        kpi_matrix = KpiMatrix(self.env)
+        kpi_matrix = KpiMatrix(self.env,
+                               account_group_level=account_group_level)
         for kpi in self.kpi_ids:
             kpi_matrix.declare_kpi(kpi)
         return kpi_matrix
 
     @api.multi
-    def _prepare_aep(self, companies, currency=None):
+    def _prepare_aep(self, companies, currency=None, account_group_level=0):
         self.ensure_one()
-        aep = AEP(companies, currency)
+        aep = AEP(companies, currency, account_group_level=account_group_level)
         for kpi in self.kpi_ids:
             for expression in kpi.expression_ids:
                 if expression.name:
@@ -733,7 +738,8 @@ class MisReport(models.Model):
                                    get_additional_query_filter=None,
                                    locals_dict=None,
                                    aml_model=None,
-                                   no_auto_expand_aggregs=False):
+                                   no_auto_expand_aggregs=False,
+                                   ):
         """ Evaluate a report for a given period, populating a KpiMatrix.
 
         :param kpi_matrix: the KpiMatrix object to be populated created
@@ -815,12 +821,16 @@ class MisReport(models.Model):
                 name_error = False
                 for expression, replaced_expr in \
                         zip(expressions, replaced_exprs):
-                    vals.append(mis_safe_eval(replaced_expr, locals_dict))
+                    if isinstance(replaced_expr, list):
+                        vals.append(sum(mis_safe_eval(r, locals_dict)
+                                        for r in replaced_expr))
+                    else:
+                        vals.append(mis_safe_eval(replaced_expr, locals_dict))
                     if replaced_expr != expression:
                         drilldown_args.append({
                             'period_id': col_key,
                             'expr': expression,
-                            'account_id': aggreg_id,
+                            'account_id': aggreg_id, # TODO: Allow other aggreg
                         })
                     else:
                         drilldown_args.append(None)

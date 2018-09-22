@@ -460,6 +460,22 @@ class MisReportInstance(models.Model):
         comodel_name='account.analytic.account', string='Analytic Account',
         oldname='account_analytic_id')
     hide_analytic_filters = fields.Boolean(default=True)
+    group_by = fields.Selection(
+        selection=[
+            ('account', 'Account'),
+            ('account_group', 'Account group'),
+        ], default='account',
+        required=True,
+    )
+    account_group_level = fields.Selection(
+        selection=[
+            (1, '1'),
+            (2, '2'),
+            (3, '3'),
+            (4, '4'),
+            (5, '5'),
+        ], default=1,
+    )
 
     @api.onchange('company_id', 'multi_company')
     def _onchange_company(self):
@@ -722,9 +738,16 @@ class MisReportInstance(models.Model):
         is guaranteed to be the id of the mis.report.instance.period.
         """
         self.ensure_one()
+        account_group_level = (
+            self.group_by == 'account_group' and self.account_group_level or 0
+        )
         aep = self.report_id._prepare_aep(
-            self.query_company_ids, self.currency_id)
-        kpi_matrix = self.report_id.prepare_kpi_matrix()
+            self.query_company_ids, self.currency_id,
+            account_group_level=account_group_level,
+        )
+        kpi_matrix = self.report_id.prepare_kpi_matrix(
+            account_group_level=account_group_level,
+        )
         for period in self.period_ids:
             description = None
             if period.mode == MODE_NONE:
@@ -753,17 +776,22 @@ class MisReportInstance(models.Model):
         self.ensure_one()
         period_id = arg.get('period_id')
         expr = arg.get('expr')
-        account_id = arg.get('account_id')
+        aggreg_id = arg.get('account_id')
         if period_id and expr and AEP.has_account_var(expr):
             period = self.env['mis.report.instance.period'].browse(period_id)
-            aep = AEP(self.query_company_ids, self.currency_id)
+            account_group_level = (self.group_by == 'account_group' and
+                                   self.account_group_level or 0)
+            aep = AEP(
+                self.query_company_ids, self.currency_id,
+                account_group_level=account_group_level,
+            )
             aep.parse_expr(expr)
             aep.done_parsing()
             domain = aep.get_aml_domain_for_expr(
                 expr,
                 period.date_from, period.date_to,
                 self.target_move if period.source == SRC_ACTUALS else None,
-                account_id)
+                aggreg_id)
             domain.extend(period._get_additional_move_line_filter())
             if period.source == SRC_ACTUALS_ALT:
                 aml_model_name = period.source_aml_model_id.model

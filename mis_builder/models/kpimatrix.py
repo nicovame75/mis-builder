@@ -148,12 +148,13 @@ class KpiMatrixCell(object):
 
 class KpiMatrix(object):
 
-    def __init__(self, env):
+    def __init__(self, env, account_group_level=0):
         # cache language id for faster rendering
         lang_model = env['res.lang']
         self.lang = lang_model._lang_get(env.user.lang)
         self._style_model = env['mis.report.style']
         self._account_model = env['account.account']
+        self._account_group_model = env['account.group']
         # data structures
         # { kpi: KpiMatrixRow }
         self._kpi_rows = OrderedDict()
@@ -165,8 +166,9 @@ class KpiMatrix(object):
         self._comparison_todo = defaultdict(list)
         # { col_key (left of sum): (col_key, [(sign, sum_col_key)])
         self._sum_todo = {}
-        # { aggreg_id: account_name }
+        # { aggreg_id: aggreg_name }
         self._aggreg_names = {}
+        self._account_group_level = account_group_level
 
     def declare_kpi(self, kpi):
         """ Declare a new kpi (row) in the matrix.
@@ -418,12 +420,20 @@ class KpiMatrix(object):
         aggreg_ids = set()
         for detail_rows in self._detail_rows.values():
             aggreg_ids.update(detail_rows.keys())
-        aggregs = self._account_model.\
-            search([('id', 'in', list(aggreg_ids))])
-        self._aggreg_names = {
-            g.id: u'{} {}'.format(g.code, g.name)
-            for g in aggregs
-        }
+        if self._account_group_level:
+            aggregs = self._account_group_model.\
+                search([('id', 'in', list(aggreg_ids))])
+            self._aggreg_names = {
+                g.id: u'{} {}'.format(g.code_prefix, g.name)
+                for g in aggregs
+            }
+        else:
+            aggregs = self._account_model.\
+                search([('id', 'in', list(aggreg_ids))])
+            self._aggreg_names = {
+                a.id: u'{} {}'.format(a.code, a.name)
+                for a in aggregs
+            }
 
     def get_aggreg_name(self, aggreg_id):
         if aggreg_id not in self._aggreg_names:
