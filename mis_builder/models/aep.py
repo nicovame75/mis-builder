@@ -407,11 +407,12 @@ class AccountingExpressionProcessor(object):
 
         return self._ACC_RE.sub(f, expr)
 
-    def replace_exprs_by_account_id(self, exprs):
+    def replace_exprs_by_aggreg_id(self, exprs):
         """Replace accounting variables in a list of expression
-        by their amount, iterating by accounts involved in the expression.
+        by their amount, iterating by the aggregation involved in the
+        expression.
 
-        yields account_id, replaced_expr
+        yields aggreg_id, replaced_expr
 
         This method must be executed after do_queries().
         """

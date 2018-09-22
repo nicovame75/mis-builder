@@ -132,7 +132,7 @@ class TestAEP(common.TransactionCase):
         res = {}
         eval_dict = {'AccountingNone': AccountingNone}
         for account_id, replaced_exprs in \
-                self.aep.replace_exprs_by_account_id([expr]):
+                self.aep.replace_exprs_by_aggreg_id([expr]):
             res[account_id] = safe_eval(replaced_exprs[0], eval_dict)
         return res
 

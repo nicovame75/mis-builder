@@ -114,7 +114,7 @@
                         <page string="Layout">
                             <group name="layout">
                                 <field name="landscape_pdf"/>
-                                <field name="no_auto_expand_accounts"/>
+                                <field name="no_auto_expand_aggregs"/>
                                 <field name="display_columns_description"/>
                                 <field name="hide_analytic_filters"/>
                             </group>

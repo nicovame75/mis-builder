@@ -202,7 +202,7 @@ class TestMisReportInstanceDataSources(common.TransactionCase):
         ])
 
     def test_actuals_disable_auto_expand_accounts(self):
-        self.instance.no_auto_expand_accounts = True
+        self.instance.no_auto_expand_aggregs = True
         matrix = self.instance._compute_matrix()
         assert_matrix(matrix, [
             [11, 13],

@@ -27,13 +27,13 @@ class KpiMatrixRow(object):
     #       It is already ignorant of period and only knowns about columns.
     #       This will require a correct abstraction for expanding row details.
 
-    def __init__(self, matrix, kpi, account_id=None, parent_row=None):
+    def __init__(self, matrix, kpi, aggreg_id=None, parent_row=None):
         self._matrix = matrix
         self.kpi = kpi
-        self.account_id = account_id
+        self.aggreg_id = aggreg_id
         self.description = ''
         self.parent_row = parent_row
-        if not self.account_id:
+        if not self.aggreg_id:
             self.style_props = self._matrix._style_model.merge([
                 self.kpi.report_id.style_id,
                 self.kpi.style_id])
@@ -44,17 +44,17 @@ class KpiMatrixRow(object):
 
     @property
     def label(self):
-        if not self.account_id:
+        if not self.aggreg_id:
             return self.kpi.description
         else:
-            return self._matrix.get_account_name(self.account_id)
+            return self._matrix.get_aggreg_name(self.aggreg_id)
 
     @property
     def row_id(self):
-        if not self.account_id:
+        if not self.aggreg_id:
             return self.kpi.name
         else:
-            return '{}:{}'.format(self.kpi.name, self.account_id)
+            return '{}:{}'.format(self.kpi.name, self.aggreg_id)
 
     def iter_cell_tuples(self, cols=None):
         if cols is None:
@@ -157,7 +157,7 @@ class KpiMatrix(object):
         # data structures
         # { kpi: KpiMatrixRow }
         self._kpi_rows = OrderedDict()
-        # { kpi: {account_id: KpiMatrixRow} }
+        # { kpi: {aggeg_id: KpiMatrixRow} }
         self._detail_rows = {}
         # { col_key: KpiMatrixCol }
         self._cols = OrderedDict()
@@ -165,8 +165,8 @@ class KpiMatrix(object):
         self._comparison_todo = defaultdict(list)
         # { col_key (left of sum): (col_key, [(sign, sum_col_key)])
         self._sum_todo = {}
-        # { account_id: account_name }
-        self._account_names = {}
+        # { aggreg_id: account_name }
+        self._aggreg_names = {}
 
     def declare_kpi(self, kpi):
         """ Declare a new kpi (row) in the matrix.
@@ -213,24 +213,24 @@ class KpiMatrix(object):
 
         Invoke this after declaring the kpi and the column.
         """
-        self.set_values_detail_account(kpi, col_key, None, vals,
-                                       drilldown_args, tooltips)
+        self.set_values_detail_aggreg(kpi, col_key, None, vals,
+                                      drilldown_args, tooltips)
 
-    def set_values_detail_account(self, kpi, col_key, account_id, vals,
-                                  drilldown_args, tooltips=True):
+    def set_values_detail_aggreg(self, kpi, col_key, aggreg_id, vals,
+                                 drilldown_args, tooltips=True):
         """ Set values for a kpi and a column and a detail account.
 
         Invoke this after declaring the kpi and the column.
         """
-        if not account_id:
+        if not aggreg_id:
             row = self._kpi_rows[kpi]
         else:
             kpi_row = self._kpi_rows[kpi]
-            if account_id in self._detail_rows[kpi]:
-                row = self._detail_rows[kpi][account_id]
+            if aggreg_id in self._detail_rows[kpi]:
+                row = self._detail_rows[kpi][aggreg_id]
             else:
-                row = KpiMatrixRow(self, kpi, account_id, parent_row=kpi_row)
-                self._detail_rows[kpi][account_id] = row
+                row = KpiMatrixRow(self, kpi, aggreg_id, parent_row=kpi_row)
+                self._detail_rows[kpi][aggreg_id] = row
         col = self._cols[col_key]
         cell_tuple = []
         assert len(vals) == col.colspan
@@ -361,7 +361,7 @@ class KpiMatrix(object):
             for row in self.iter_rows():
                 if row.kpi.accumulation_method != ACC_SUM:
                     continue
-                if row.account_id and not sum_accdet:
+                if row.aggreg_id and not sum_accdet:
                     continue
                 acc = SimpleArray(
                     [AccountingNone] * (len(common_subkpis) or 1))
@@ -379,8 +379,8 @@ class KpiMatrix(object):
                         acc += SimpleArray(vals)
                     else:
                         acc -= SimpleArray(vals)
-                self.set_values_detail_account(
-                    row.kpi, sumcol_key, row.account_id, acc,
+                self.set_values_detail_aggreg(
+                    row.kpi, sumcol_key, row.aggreg_id, acc,
                     [None] * (len(common_subkpis) or 1),
                     tooltips=False)
 
@@ -414,21 +414,21 @@ class KpiMatrix(object):
             for subcol in col.iter_subcols():
                 yield subcol
 
-    def _load_account_names(self):
-        account_ids = set()
+    def _load_aggreg_names(self):
+        aggreg_ids = set()
         for detail_rows in self._detail_rows.values():
-            account_ids.update(detail_rows.keys())
-        accounts = self._account_model.\
-            search([('id', 'in', list(account_ids))])
-        self._account_names = {
-            a.id: u'{} {}'.format(a.code, a.name)
-            for a in accounts
+            aggreg_ids.update(detail_rows.keys())
+        aggregs = self._account_model.\
+            search([('id', 'in', list(aggreg_ids))])
+        self._aggreg_names = {
+            g.id: u'{} {}'.format(g.code, g.name)
+            for g in aggregs
         }
 
-    def get_account_name(self, account_id):
-        if account_id not in self._account_names:
-            self._load_account_names()
-        return self._account_names[account_id]
+    def get_aggreg_name(self, aggreg_id):
+        if aggreg_id not in self._aggreg_names:
+            self._load_aggreg_names()
+        return self._aggreg_names[aggreg_id]
 
     def as_dict(self):
         header = [{'cols': []}, {'cols': []}]

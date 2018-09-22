@@ -440,8 +440,9 @@ class MisReportInstance(models.Model):
         required=False,
     )
     landscape_pdf = fields.Boolean(string='Landscape PDF')
-    no_auto_expand_accounts = fields.Boolean(
-        string='Disable account details expansion',
+    no_auto_expand_aggregs = fields.Boolean(
+        string='Disable aggregation details expansion',
+        oldname='no_auto_expand_accounts',
     )
     display_columns_description = fields.Boolean(
         help="Display the date range details in the column headers.",
@@ -659,7 +660,7 @@ class MisReportInstance(models.Model):
             period.subkpi_ids,
             period._get_additional_move_line_filter,
             period._get_additional_query_filter,
-            no_auto_expand_accounts=self.no_auto_expand_accounts,
+            no_auto_expand_aggregs=self.no_auto_expand_aggregs,
         )
 
     def _add_column_actuals_alt(
@@ -681,7 +682,7 @@ class MisReportInstance(models.Model):
             period._get_additional_move_line_filter,
             period._get_additional_query_filter,
             aml_model=period.source_aml_model_id.model,
-            no_auto_expand_accounts=self.no_auto_expand_accounts,
+            no_auto_expand_aggregs=self.no_auto_expand_aggregs,
         )
 
     def _add_column_sumcol(

@@ -626,8 +626,8 @@ class MisReport(models.Model):
                                  subkpis_filter,
                                  locals_dict,
                                  eval_expressions,
-                                 eval_expressions_by_account,
-                                 no_auto_expand_accounts=False):
+                                 eval_expressions_by_aggreg,
+                                 no_auto_expand_aggregs=False):
         """This is the main computation loop.
 
         It evaluates the kpis and puts the results in the KpiMatrix.
@@ -698,15 +698,15 @@ class MisReport(models.Model):
                     kpi, col_key, vals, drilldown_args)
 
                 if name_error or \
-                        no_auto_expand_accounts or \
+                        no_auto_expand_aggregs or \
                         not kpi.auto_expand_accounts or \
-                        not eval_expressions_by_account:
+                        not eval_expressions_by_aggreg:
                     continue
 
-                for account_id, vals, drilldown_args, name_error in \
-                        eval_expressions_by_account(expressions, locals_dict):
-                    kpi_matrix.set_values_detail_account(
-                        kpi, col_key, account_id, vals, drilldown_args)
+                for aggreg_id, vals, drilldown_args, name_error in \
+                        eval_expressions_by_aggreg(expressions, locals_dict):
+                    kpi_matrix.set_values_detail_aggreg(
+                        kpi, col_key, aggreg_id, vals, drilldown_args)
 
             if len(recompute_queue) == 0:
                 # nothing to recompute, we are done
@@ -733,7 +733,7 @@ class MisReport(models.Model):
                                    get_additional_query_filter=None,
                                    locals_dict=None,
                                    aml_model=None,
-                                   no_auto_expand_accounts=False):
+                                   no_auto_expand_aggregs=False):
         """ Evaluate a report for a given period, populating a KpiMatrix.
 
         :param kpi_matrix: the KpiMatrix object to be populated created
@@ -805,11 +805,11 @@ class MisReport(models.Model):
                 drilldown_args.append(drilldown_arg)
             return vals, drilldown_args, name_error
 
-        def eval_expressions_by_account(expressions, locals_dict):
+        def eval_expressions_by_aggreg(expressions, locals_dict):
             expressions = [e and e.name or 'AccountingNone'
                            for e in expressions]
-            for account_id, replaced_exprs in \
-                    aep.replace_exprs_by_account_id(expressions):
+            for aggreg_id, replaced_exprs in \
+                    aep.replace_exprs_by_aggreg_id(expressions):
                 vals = []
                 drilldown_args = []
                 name_error = False
@@ -820,16 +820,16 @@ class MisReport(models.Model):
                         drilldown_args.append({
                             'period_id': col_key,
                             'expr': expression,
-                            'account_id': account_id,
+                            'account_id': aggreg_id,
                         })
                     else:
                         drilldown_args.append(None)
-                yield account_id, vals, drilldown_args, name_error
+                yield aggreg_id, vals, drilldown_args, name_error
 
         self._declare_and_compute_col(
             kpi_matrix, col_key, col_label, col_description, subkpis_filter,
-            locals_dict, eval_expressions, eval_expressions_by_account,
-            no_auto_expand_accounts)
+            locals_dict, eval_expressions, eval_expressions_by_aggreg,
+            no_auto_expand_aggregs)
 
     def get_kpis_by_account_id(self, company):
         """ Return { account_id: set(kpi) } """
