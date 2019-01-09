@@ -186,9 +186,9 @@ class AccountingExpressionProcessor(object):
                 key = (ml_domain, mode)
                 self._map_account_ids[key].add(acc_domain)
 
-    def done_parsing(self):
+    def done_parsing(self, account_model=None):
         """ Replace account domains by account ids in map """
-        account_model = self.env['account.account'].\
+        account_model = self.env[account_model or 'account.account'].\
             with_context(active_test=False)
         for key, acc_domains in self._map_account_ids.items():
             all_account_ids = set()
@@ -467,19 +467,20 @@ class AccountingExpressionProcessor(object):
 
     @classmethod
     def _get_balances(cls, mode, companies, date_from, date_to,
-                      target_move='posted'):
+                      target_move='posted', account_model=None):
         expr = 'deb{mode}[], crd{mode}[]'.format(mode=mode)
         aep = AccountingExpressionProcessor(companies)
         # disable smart_end to have the data at once, instead
         # of initial + variation
         aep.smart_end = False
         aep.parse_expr(expr)
-        aep.done_parsing()
+        aep.done_parsing(account_model)
         aep.do_queries(date_from, date_to, target_move)
         return aep._data[((), mode)]
 
     @classmethod
-    def get_balances_initial(cls, companies, date, target_move='posted'):
+    def get_balances_initial(cls, companies, date, target_move='posted',
+                             account_model=None):
         """ A convenience method to obtain the initial balances of all accounts
         at a given date.
 
@@ -488,14 +489,16 @@ class AccountingExpressionProcessor(object):
         :param companies:
         :param date:
         :param target_move: if 'posted', consider only posted moves
+        :param account_model: account model name
 
         Returns a dictionary: {account_id, (debit, credit)}
         """
         return cls._get_balances(cls.MODE_INITIAL, companies,
-                                 date, date, target_move)
+                                 date, date, target_move, account_model)
 
     @classmethod
-    def get_balances_end(cls, companies, date, target_move='posted'):
+    def get_balances_end(cls, companies, date, target_move='posted',
+                         account_model=None):
         """ A convenience method to obtain the ending balances of all accounts
         at a given date.
 
@@ -504,40 +507,45 @@ class AccountingExpressionProcessor(object):
         :param companies:
         :param date:
         :param target_move: if 'posted', consider only posted moves
+        :param account_model: account model name
 
         Returns a dictionary: {account_id, (debit, credit)}
         """
         return cls._get_balances(cls.MODE_END, companies,
-                                 date, date, target_move)
+                                 date, date, target_move, account_model)
 
     @classmethod
     def get_balances_variation(cls, companies, date_from, date_to,
-                               target_move='posted'):
+                               target_move='posted', account_model=None):
         """ A convenience method to obtain the variation of the
         balances of all accounts over a period.
 
         :param companies:
         :param date:
         :param target_move: if 'posted', consider only posted moves
+        :param account_model: account model name
 
         Returns a dictionary: {account_id, (debit, credit)}
         """
         return cls._get_balances(cls.MODE_VARIATION, companies,
-                                 date_from, date_to, target_move)
+                                 date_from, date_to, target_move,
+                                 account_model)
 
     @classmethod
-    def get_unallocated_pl(cls, companies, date, target_move='posted'):
+    def get_unallocated_pl(cls, companies, date, target_move='posted',
+                           account_model=None):
         """ A convenience method to obtain the unallocated profit/loss
         of the previous fiscal years at a given date.
 
         :param companies:
         :param date:
         :param target_move: if 'posted', consider only posted moves
+        :param account_model: account model name
 
         Returns a tuple (debit, credit)
         """
         # TODO shoud we include here the accounts of type "unaffected"
         # or leave that to the caller?
         bals = cls._get_balances(cls.MODE_UNALLOCATED, companies,
-                                 date, date, target_move)
+                                 date, date, target_move, account_model)
         return tuple(map(sum, zip(*bals.values())))

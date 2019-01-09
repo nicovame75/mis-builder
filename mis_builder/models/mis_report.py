@@ -526,14 +526,14 @@ class MisReport(models.Model):
         return kpi_matrix
 
     @api.multi
-    def _prepare_aep(self, companies, currency=None):
+    def _prepare_aep(self, companies, currency=None, account_model=None):
         self.ensure_one()
         aep = AEP(companies, currency)
         for kpi in self.kpi_ids:
             for expression in kpi.expression_ids:
                 if expression.name:
                     aep.parse_expr(expression.name)
-        aep.done_parsing()
+        aep.done_parsing(account_model)
         return aep
 
     def prepare_locals_dict(self):

@@ -669,10 +669,19 @@ class MisReportInstance(models.Model):
         is guaranteed to be the id of the mis.report.instance.period.
         """
         self.ensure_one()
-        aep = self.report_id._prepare_aep(
-            self.query_company_ids, self.currency_id)
         kpi_matrix = self.report_id.prepare_kpi_matrix()
         for period in self.period_ids:
+
+            account_model = None
+            if period.source == 'actuals_alt' and period.source_aml_model_id:
+                account_field = period.source_aml_model_id.field_id.filtered(
+                    lambda r: r.name == 'account_id')
+                account_model = account_field.relation
+
+            aep = self.report_id._prepare_aep(self.query_company_ids,
+                                              self.currency_id,
+                                              account_model=account_model)
+
             description = None
             if period.mode == MODE_NONE:
                 pass
@@ -705,7 +714,15 @@ class MisReportInstance(models.Model):
             period = self.env['mis.report.instance.period'].browse(period_id)
             aep = AEP(self.query_company_ids, self.currency_id)
             aep.parse_expr(expr)
-            aep.done_parsing()
+
+            account_model = None
+            if period.source == 'actuals_alt' and period.source_aml_model_id:
+                account_field = period.source_aml_model_id.field_id.filtered(
+                    lambda r: r.name == 'account_id')
+                account_model = account_field.relation
+
+            aep.done_parsing(account_model=account_model)
+
             domain = aep.get_aml_domain_for_expr(
                 expr,
                 period.date_from, period.date_to,
